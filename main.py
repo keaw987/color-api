@@ -9,17 +9,16 @@ app = Flask(__name__)
 def index():
     return 'API is running ✅'
 
-@app.route('/get_color', methods=['POST'])
+@app.route('/get-color', methods=['POST'])
 def get_color():
     try:
         data = request.get_json()
-        base64_str = data.get('image_base64')
+        base64_str = data.get('image_base64', '')
 
-        # แปลง base64 เป็นรูป
         image_data = base64.b64decode(base64_str)
         image = Image.open(BytesIO(image_data))
 
-        # หาค่า RGB ตรงกลางภาพ
+        # ดึงสีตรงกลาง
         w, h = image.size
         pixel = image.getpixel((w // 2, h // 2))
 
