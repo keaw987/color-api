@@ -1,35 +1,27 @@
 from flask import Flask, request, jsonify
-from PIL import Image
-from io import BytesIO
 import base64
+from io import BytesIO
+from PIL import Image
+from collections import Counter
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    return 'API is running ✅'
-
-@app.route('/get-color', methods=['POST'])
+@app.route("/get-color", methods=["POST"])
 def get_color():
+    data = request.get_json()
+    image_base64 = data.get("image_base64")
+
+    if not image_base64:
+        return jsonify({"error": "Missing image_base64"}), 400
+
     try:
-        data = request.get_json()
-        base64_str = data.get('image_base64', '')
-
-        image_data = base64.b64decode(base64_str)
-        image = Image.open(BytesIO(image_data))
-
-        # ดึงสีตรงกลาง
-        w, h = image.size
-        pixel = image.getpixel((w // 2, h // 2))
-
-        return jsonify({
-            "R": pixel[0],
-            "G": pixel[1],
-            "B": pixel[2]
-        })
+        header, encoded = image_base64.split(",", 1)
+        image_data = base64.b64decode(encoded)
+        image = Image.open(BytesIO(image_data)).convert("RGB")
+        pixels = list(image.getdata())
+        most_common_color = Counter(pixels).most_common(1)[0][0]
+        hex_color = '#%02x%02x%02x' % most_common_color
+        return jsonify({"dominant_color": hex_color})
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+        return jsonify({"error": str(e)}), 500
