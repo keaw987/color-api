@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify
 import base64
-from io import BytesIO
 from PIL import Image
-from collections import Counter
+from io import BytesIO
 import os
 
 app = Flask(__name__)
@@ -11,37 +10,29 @@ app = Flask(__name__)
 def get_color():
     try:
         data = request.get_json()
-        image_base64 = data.get("image_base64")
+        base64_string = data.get("image_base64", "")
 
-        if not image_base64:
-            return jsonify({"error": "Missing image_base64"}), 400
+        if "," in base64_string:
+            base64_string = base64_string.split(",")[1]
 
-        # แยกส่วน base64 ออก (ถ้ามี header)
-        if "," in image_base64:
-            _, encoded = image_base64.split(",", 1)
-        else:
-            encoded = image_base64
+        # ทำ padding ให้ถูกต้อง
+        missing_padding = len(base64_string) % 4
+        if missing_padding != 0:
+            base64_string += "=" * (4 - missing_padding)
 
-        # 🔧 แก้ padding ให้ base64 ครบ 4 หลัก
-        missing_padding = len(encoded) % 4
-        if missing_padding:
-            encoded += '=' * (4 - missing_padding)
+        # แปลง base64 เป็นภาพ
+        image_data = base64.b64decode(base64_string)
+        image = Image.open(BytesIO(image_data))
 
-        # แปลง base64 → รูป
-        image_data = base64.b64decode(encoded)
-        image = Image.open(BytesIO(image_data)).convert("RGB")
+        # เอาสี pixel แรก
+        pixel = image.getpixel((0, 0))
 
-        # ดึงสีหลัก
-        pixels = list(image.getdata())
-        most_common_color = Counter(pixels).most_common(1)[0][0]
-        hex_color = '#%02x%02x%02x' % most_common_color
-
-        return jsonify({"dominant_color": hex_color})
+        return jsonify({"color": pixel})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ✅ รองรับ Render
+# ✅ แก้ให้ Flask ใช้ PORT จาก Render ได้
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
