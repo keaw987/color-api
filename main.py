@@ -19,7 +19,7 @@ def decode_image(base64_string):
     try:
         image_data = base64.b64decode(base64_string)
         image = Image.open(BytesIO(image_data))
-        image.verify()  # ตรวจสอบว่าเปิดได้จริง
+        image.verify()
         image = Image.open(BytesIO(image_data)).convert("RGB")
         return image
     except Exception as e:
@@ -73,7 +73,7 @@ def compare_with_standard():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ===== สำหรับ Render หรือ Replit =====
+# ====== สำหรับ Render ======
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
