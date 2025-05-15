@@ -7,27 +7,29 @@ import os
 app = Flask(__name__)
 
 def decode_image(base64_string):
-    if not base64_string:
-        raise ValueError("Empty base64 string.")
-
-    if "," in base64_string:
-        base64_string = base64_string.split(",")[1]
-
-    base64_string = base64_string.replace("\n", "").replace("\r", "").replace(" ", "")
-    base64_string += "=" * ((4 - len(base64_string) % 4) % 4)
-
     try:
+        # ตัด data:image/... ออก (ถ้ามี)
+        if "," in base64_string:
+            base64_string = base64_string.split(",")[1]
+
+        # ลบช่องว่างและบรรทัดใหม่
+        base64_string = base64_string.replace("\n", "").replace("\r", "").replace(" ", "")
+
+        # เติม padding ให้ครบ
+        missing_padding = len(base64_string) % 4
+        if missing_padding:
+            base64_string += "=" * (4 - missing_padding)
+
         image_data = base64.b64decode(base64_string)
         image = Image.open(BytesIO(image_data))
-        image.verify()
-        image = Image.open(BytesIO(image_data)).convert("RGB")
+        image = image.convert("RGB")  # สำหรับความสม่ำเสมอ
         return image
     except Exception as e:
         raise ValueError(f"Base64 decode/open failed: {e}")
 
 @app.route("/")
-def home():
-    return "✅ API is running!"
+def index():
+    return "API is running!"
 
 @app.route("/get-color", methods=["POST"])
 def get_color():
@@ -61,19 +63,17 @@ def compare_with_standard():
         results = []
         for pos, std_color in zip(positions, standard_colors):
             actual = image.getpixel(tuple(pos))
-            match = actual == tuple(std_color)
             results.append({
                 "position": pos,
                 "actual": actual,
                 "expected": std_color,
-                "match": match
+                "match": actual == tuple(std_color)
             })
 
         return jsonify({"results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ====== สำหรับ Render ======
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))  # สำหรับ Render
     app.run(host="0.0.0.0", port=port)
